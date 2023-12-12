@@ -1,0 +1,498 @@
+## Wuziqi
+import sqlite3
+import pygame
+import threading
+import time
+import random
+
+
+player1 = 0
+AI = 1
+
+# Define colours
+WHITE = (255,255,255)
+BLACK = (0,0,0)
+RED = (255,0,0)
+GREEN = (0,200,0)
+BROWN = (205,133,63)
+PAUSE = (124,158,176)
+
+# Set the game display window
+maxX = 900
+maxY = 600
+
+# Set up a font
+#comic_font50 = pygame.font.SysFont("freesansbold.ttf", 50)
+
+# Set the starting position for the stone
+StonePosx = 280
+StonePosy = 280
+
+# Clarify the width of the scoreboard so the stone knows where to stop
+ScoreboardWidth = 100
+                   
+# Cellsize - found by dividing the length of the display by 15 to create the squares on the board
+CELLSIZE = 40
+
+# cell columns and rows
+Xcol = 8
+Yrow = 8
+
+# Set the scores for player one and player 2
+scoreb = 0
+scorew = 0
+
+# is it a 2 player or AI game
+runAI = True
+
+HORIZ = 1
+DIAGR = 2
+VERT = 3
+DIAGL = 4
+
+
+# Create the board for the program to reference - will refer from it through the code 
+
+board = (["","","","","","","","","","","","","","",""],
+         ["","","","","","","","","","","","","","",""],
+         ["","","","","","","","","","","","","","",""], 
+         ["","","","","","","","","","","","","","",""],
+         ["","","","","","","","","","","","","","",""],
+         ["","","","","","","","","","","","","","",""],
+         ["","","","","","","","","","","","","","",""],
+         ["","","","","","","","","","","","","","",""],
+         ["","","","","","","","","","","","","","",""],
+         ["","","","","","","","","","","","","","",""],
+         ["","","","","","","","","","","","","","",""],
+         ["","","","","","","","","","","","","","",""],
+         ["","","","","","","","","","","","","","",""],
+         ["","","","","","","","","","","","","","",""],
+         ["","","","","","","","","","","","","","",""])
+
+
+Threerow = 50
+Tworow = 30
+one = 10
+Fourrow = 60
+
+
+# 3 Dimensional array to check the flagged moves [horiz,diag_r,vert,diag_l] - previously been flagged as part of a group and then you can proccess them
+# its part of a group if any of the flags are set to 1 - that indicates that it has already been previously been allocated to a group
+board_flags = [[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],
+               [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],
+               [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],
+               [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],
+               [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],
+               [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],
+               [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],
+               [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],
+               [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],
+               [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],
+               [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],
+               [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],
+               [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],
+               [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]],
+               [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]]
+
+# Make the stone count list for sorting
+stone_count_list = []
+
+# Function that draws on all the labelled areas on the board such as the scoreboard, player 1 and player 2
+
+# Draws the quares on the board
+def draw_squares():
+    for y_pos in range(15):
+            for x_pos in range(15):
+                pygame.draw.rect(gameDisplay, BLACK, [x_pos*CELLSIZE, y_pos*CELLSIZE, CELLSIZE, CELLSIZE], 1)  # Creates the black squares for the stone spaces
+
+# Checks if black has won
+def check_winner_b(board):
+    font = pygame.font.SysFont(None, 32)
+    winner = pygame.image.load("Images/newwinner1.png")
+    cont_c = pygame.image.load("Images/cont_winner.png") # Blits in the images if a player has won
+    # Horizontal winner
+    for xpos in range (len(board)):
+        for ypos in range (len(board[0]) - 4):
+            if board[xpos][ypos] == 'b' and board[xpos+1][ypos] == 'b' and board[xpos+2][ypos] == 'b' and board[xpos+3][ypos] == 'b' and board[xpos+4][ypos] == 'b':
+                gameDisplay.blit(winner, (150, 200))
+                gameDisplay.blit(cont_c, (250,510)) # Displays the Player 1 wins image and c - continue image
+    # Vertical winner
+    for xpos in range (len(board)):
+        for ypos in range (len(board[0]) - 4):
+            if board[xpos][ypos] == 'b' and board[xpos][ypos+1] == 'b' and board[xpos][ypos+2] == 'b' and board[xpos][ypos+3] == 'b' and board[xpos][ypos+4] == 'b':
+                gameDisplay.blit(winner, (150, 200))
+                gameDisplay.blit(cont_c, (250,510))
+    # Diagonal winner /
+    for xpos in range (len(board)):
+        for ypos in range (len(board[0]) - 4):
+            if board[xpos][ypos] == 'b' and board[xpos-1][ypos+1] == 'b' and board[xpos-2][ypos+2] == 'b' and board[xpos-3][ypos+3] == 'b' and board[xpos-4][ypos+4] == 'b':
+                gameDisplay.blit(winner, (150, 200))
+                gameDisplay.blit(cont_c, (250,510))
+    # Diagonal winner \
+    for xpos in range (len(board)):
+        for ypos in range (len(board[0]) - 4):
+            if board[xpos][ypos] == 'b' and board[xpos+1][ypos+1] == 'b' and board[xpos+2][ypos+2] == 'b' and board[xpos+3][ypos+3] == 'b' and board[xpos+4][ypos+4] == 'b':
+                gameDisplay.blit(winner, (150, 200))
+                gameDisplay.blit(cont_c, (250,510))
+
+# Checks if white has won
+def check_winner_w(board):
+    font = pygame.font.SysFont(None, 32)
+    winner = pygame.image.load("Images/newwinner2.png")
+    cont_c = pygame.image.load("Images/cont_winner.png")
+    # Horizontal winner
+    for xpos in range (len(board)):
+        for ypos in range (len(board[0]) - 4):
+            if board[xpos][ypos] == 'w' and board[xpos+1][ypos] == 'w' and board[xpos+2][ypos] == 'w' and board[xpos+3][ypos] == 'w' and board[xpos+4][ypos] == 'w':
+                gameDisplay.blit(winner, (200, 200))
+                gameDisplay.blit(cont_c, (250,510))
+    # Vertical winner
+    for xpos in range (len(board)):
+        for ypos in range (len(board[0]) - 4):
+            if board[xpos][ypos] == 'w' and board[xpos][ypos+1] == 'w' and board[xpos][ypos+2] == 'w' and board[xpos][ypos+3] == 'w' and board[xpos][ypos+4] == 'w':
+                gameDisplay.blit(winner, (200, 200))
+                gameDisplay.blit(cont_c, (250,510))
+    # Diagonal winner /
+    for xpos in range (len(board)):
+        for ypos in range (len(board[0]) - 4):
+            if board[xpos][ypos] == 'w' and board[xpos-1][ypos+1] == 'w' and board[xpos-2][ypos+2] == 'w' and board[xpos-3][ypos+3] == 'w' and board[xpos-4][ypos+4] == 'w':
+                gameDisplay.blit(winner, (200, 200))
+                gameDisplay.blit(cont_c, (250,510))
+    # Diagonal winner \
+    for xpos in range (len(board)):
+        for ypos in range (len(board[0]) - 4):
+            if board[xpos][ypos] == 'w' and board[xpos+1][ypos+1] == 'w' and board[xpos+2][ypos+2] == 'w' and board[xpos+3][ypos+3] == 'w' and board[xpos+4][ypos+4] == 'w':
+                gameDisplay.blit(winner, (200, 200))
+                gameDisplay.blit(cont_c, (250,510))
+
+# Vertical Search
+def count_vert(Xcol,Yrow,stone_count): # assume top down... so only need to check down!
+    if board[Yrow][Xcol] == board[Yrow+1][Xcol+1]: 
+        stone_count = count_diag_l(Xcol+1,Yrow+1,stone_count) #recursivly call count vert        
+        return stone_count+1 
+    else:
+        return stone_count+1 # increment stone_count
+
+# Horizontal Search
+def count_horiz(Xcol,Yrow,stone_count):
+    if board[Yrow][Xcol] == board[Yrow][Xcol+1]: # if 2 adjacent vstones are the same
+        stone_count = count_horiz(Xcol+1,Yrow,stone_count) #recursivly call count horiz        
+        return stone_count+1
+    else:
+        return stone_count+1 # increment stone_count
+
+# Diagonal Left Search \
+def count_diag_l(Xcol,Yrow,stone_count): # Diagonally Left search \ (or right need to understand which way)
+    if board[Yrow][Xcol] == board[Yrow+1][Xcol+1]: 
+        stone_count = count_diag_l(Xcol+1,Yrow+1,stone_count) #recursivly call count diag_l        
+        return stone_count+1
+    else:
+        return stone_count+1 # increment stone_count
+
+# Diagonal Right Search /
+def count_diag_r(Xcol,Yrow,stone_count): 
+    if board[Yrow][Xcol] == board[Yrow-1][Xcol+1]: 
+        stone_count = count_diag_r(Xcol+1,Yrow-1,stone_count)        
+        return stone_count+1 
+    else:
+        return stone_count+1 # increment stone_count
+
+# performs the AI's move onto the game board
+def perform_AI_move():
+    for x_index in range (len(board)):
+        for y_index in range (len(board)):
+            search_vert = count_vert(x_index,y_index,0,'b')
+            if search_vert >= 0:
+                print (search_vert)
+                print (x_index, y_index)
+
+########## SQL DATABASE ###########
+
+# Open (if non-existent then create) a DB
+conn = sqlite3.connect('gomo.db')
+
+# Create the font for the User_Input
+# pygame.font.Font(None,32)
+
+send = conn.cursor()
+# Create the unique database table 
+send.execute('''CREATE TABLE IF NOT EXISTS Players (
+                PlayersUsername varchar(20) NOT NULL,
+                PlayersPassword varchar(40) NOT NULL);''')  # fix the to allow the user to enter their values after they have made an account
+
+# Create a second table in the database - unless it was made before
+send.execute('''CREATE TABLE IF NOT EXISTS Score (
+                Score INTEGER PRIMARY KEY AUTOINCREMENT,
+                PlayedAgainst varchar(20) NOT NULL);''')
+
+Username_Input = str(input("""
+            _-------------------------------_
+            |     Username Login System     |
+            |                               |
+            |        'y/Y' - Signup         |
+            |        'n/N' - Login          |
+            |        'd/D' - Delete         |
+            |                               |
+             -_____________________________-
+""")) ##Input statement to be converted into an animation on pygame soon 
+while Username_Input == 'N' or Username_Input == 'n':
+    Username_Input = True
+    while Username_Input:
+        try:
+            choose_user = input("\n Please enter your existing username: ")  # enter existing username and check if it is in the database
+            select_query = f"SELECT COUNT(*) FROM players WHERE PlayersUsername = '{choose_user}';"
+            print ("command executed: \n" + select_query)
+            send.execute(select_query) # select from the database
+            data_set = send.fetchall()
+            if data_set[0][0] > 0:
+                choose_pass = input("\n Please enter your existing password: ") # enter existing password and check if it is the database
+                select_pass = f"SELECT COUNT (*) FROM players WHERE PlayersPassword = '{choose_pass}';" # maybe get rid of this for design purposes
+                print ("command executed: \n " + select_pass)
+                send.execute(select_pass)
+                data_set = send.fetchall()
+                if data_set[0][0] > 0:      # checks if the dataset matches the correct protocol for 'username' and 'password'
+                    print (f'\n Access Granted')
+                    Username_Input = False
+        except Exception as err:
+                print ('Access Denied - try another account')
+                Username_Input = True
+        conn.close() ## Close the database
+if Username_Input == 'Y' or Username_Input == 'y':
+    Username_Input = True
+    while Username_Input:
+        try:
+            username = input("\n Enter your Username: ") ## Sends to the database
+            password = input("\n Enter the Password: ") ## Sends to the database
+            query = "INSERT INTO players (PlayersUsername, PlayersPassword) " \
+            f"VALUES('{username}', '{password}');"
+            send.execute(query)
+            conn.commit()
+            print(f"\n Username saved: ")  # make it link back to the code here and allow user to enter there credentials again to get into th game
+            Username_Input = False
+        except Exception as err: ## Allows me to identify if the write has not gone through
+            print(f"Write Failed: ")
+            Username_Input = True
+if Username_Input == 'D' or Username_Input == 'd':
+    Username_Input = True
+    try:
+        del_user = input("\n What is the Username you wish to terminate: ")
+        del_pass = input("\n Please enter the password: ")
+        del_query = f"DELETE FROM players WHERE PlayersUsername = '{del_user}' AND PlayersPassword = '{del_pass}"
+        send.execute(del_query)
+        print("\n Record Succesfully Deleted")
+        Username_Input = True
+    except Exception as err:
+        print ("\n Recurd Termination unsuccesful - Please Try again")
+        Username_Input = True
+
+def placeRandomStone():
+    tStone = 'x'
+    while tStone != '':
+        x= random.randint(0,14)
+        y= random.randint(0,14)
+        tStone=board[x][y]
+    board[x][y]='w'
+
+def placeAIStone():
+    tStone = 'x'
+    moveValue = 0
+    while moveValue == 4:
+        gameDisplay.blit(WstoneImg) # randomly place stones
+    while moveValue == 3:
+        gameDisplay.blit(WstoneImg)
+    while moveValue == 2:
+        gameDisplay.blit(WstoneImg)
+    while tStone != '':
+        for x in range(0,14):
+            for y in range (0,14):
+                if count_vert == len(stone_count[3]):
+                    moveValue = 3
+                elif count_vert == len(stone_count[2]):
+                    moveValue = 2
+                elif count_vert == len(stone_count[4]):
+                    moveValue = 4
+                elif count_horiz == len(stone_count[3]):
+                    moveValue = 3
+                elif count_horiz == len(stone_count[2]):
+                    moveValue = 2
+                elif count_horiz == len(stone_count[4]):
+                    moveValue = 4
+                if count_diag_l == len(stone_count[3]):
+                    moveValue = 3
+                elif count_diag_l == len(stone_count[2]):
+                    moveValue = 2
+                elif count_diag_l == len(stone_count[4]):
+                    moveValue = 4
+                if count_diag_r == len(stone_count[3]):
+                    moveValue = 3
+                elif count_diag_r == len(stone_count[2]):
+                    moveValue = 2
+                elif count_diag_r == len(stone_count[4]):
+                    moveValue = 4
+                
+        
+        tStone=board[x][y]
+    board[x][y]='w'
+
+Username_Input=False
+while Username_Input != True:
+    
+    Black_Player = True
+
+    #conn.close() ## Close the database
+    pygame.init()
+
+    # Setup window
+    gameDisplay = pygame.display.set_mode((maxX,maxY))
+
+    # Change the window title
+    pygame.display.set_caption('Go Moku')
+
+    # Set the game clock
+    clock = pygame.time.Clock()
+
+    # Set the score
+    score = 0
+
+    # Load the images you want to use
+    BstoneImg = pygame.image.load("Images/RealBStone.png")
+    WstoneImg = pygame.image.load("Images/RealWStone.png")
+    RedSqr = pygame.image.load("Images/RedSqr.png")
+    BrownSqr = pygame.image.load("Images/browncover.png")
+    Scoreboard = pygame.image.load("Images/real_score.png")
+    p1 = pygame.image.load("Images/real_p1.png")
+    p2 = pygame.image.load("Images/real_p2.png")
+    accrules = pygame.image.load("Images/RULES.png")
+    cont = pygame.image.load("Images/continue.png")
+    invalid = pygame.image.load("Images/invalid_move.png")
+    pause = pygame.image.load("Images/pause.png")
+
+   ## Make the text for all the elements of the code ##
+    font = pygame.font.SysFont(None, 32)
+    font2 = pygame.font.SysFont(None, 20) ## add a font
+    message2 = font2.render("Resume   -  r;", True,  BLACK)
+    message3 = font2.render("Options  -  o;", True, BLACK)
+    message4 = font2.render("Quit     -  q", True, BLACK)
+    rules = font2.render("Each player choose their symbol (Either Black or White)", True, BLACK)
+    rules1 = font2.render("Black goes first", True, BLACK)
+    rules2 = font2.render("The first player to get 5 in a row wins - either diagonally, vertically or horizontally", True, BLACK)
+    rules3 = font2.render("Either player is allowed to place any stone anywhere they want on the board", True, BLACK)
+    rules4 = font2.render("If no player gets 5 in a row by the end of the game – no points are awarded", True, BLACK)
+    black_score = font.render(str(scoreb), 1, BLACK)
+    white_score = font.render(str(scorew), 1, BLACK)
+    button = pygame.Rect(640, 450, 210, 102) # (640, 450) - coordinates, (210,102) - size
+
+######### EVENT HANDLER #########
+
+    gameExit = False
+    while not gameExit:
+        for event in pygame.event.get(): # https://www.pygame.org/docs/ref/event.html
+            if event.type == pygame.QUIT:
+                gameExit = True
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT or event.key == ord('a'):
+                    Xcol -= 1
+                elif event.key == pygame.K_RIGHT or event.key == ord('d'):
+                    Xcol += 1
+                elif event.key == pygame.K_UP or event.key == ord('w'):
+                    Yrow -= 1
+                elif event.key == pygame.K_DOWN or event.key == ord('s'):        
+                    Yrow += 1
+                elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
+                    if board[Xcol][Yrow] == '':
+                        if Black_Player:
+                            board[Xcol][Yrow] = 'b' # implement the check 
+                            score = score+1
+                            # check if AI game is in operation
+                            #if runAI:
+                            #    perform_AI_move()
+                            #else:
+                            Black_Player = False # Switch the player to white
+                       # else:
+                           # board[Xcol][Yrow] = 'w'
+                            placeRandomStone()
+                            score = score+1
+                            Black_Player = True
+                    else:
+                       gameDisplay.blit(invalid, (610, 300))
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if button.collidepoint(event.pos):     # Creates the pause menu for the algorithm
+                    pause = True
+                    while pause:
+                        gameDisplay.fill(BROWN)
+                        gameDisplay.blit(message2, (200, 200))
+                        gameDisplay.blit(message3, (200, 300))  # displays the info when you press 'i' to fo to the menu
+                        gameDisplay.blit(message4, (200, 400))
+                        pygame.display.update()
+                        for event in pygame.event.get():
+                            if event.type == pygame.KEYDOWN:
+                                if event.key == ord("r"): # resume function if the user wants to continue the game
+                                    pause = False
+                                elif event.key == ord("q"):  # quit function if the user wishes to leave
+                                    pygame.quit()
+                                    quit()
+                                elif event.key == ord("o"): 
+                                    gameDisplay.fill(BROWN)
+                                    gameDisplay.blit(accrules, (100, 135))  # Rules section of the menu
+                                    gameDisplay.blit(rules, (100, 200))     # blitting in all the text for the user
+                                    gameDisplay.blit(rules2, (100, 250))
+                                    gameDisplay.blit(rules3, (100, 300))
+                                    gameDisplay.blit(rules4, (100, 350))
+                                    gameDisplay.blit(cont, (100, 400))
+                                    pygame.display.update()
+                                    while pause:
+                                        time.sleep(0.1)
+                                        for event in pygame.event.get():
+                                            if event.type == pygame.KEYDOWN:
+                                                if event.key == pygame.K_c:
+                                                    pause = True 
+        a,b = pygame.mouse.get_pos()
+        if button.x <= a <= button.x + 210 and button.y <= b <= button.y + 102:  # Shades the pause button a different colour when you press it
+            pygame.draw.rect(gameDisplay, (180,180,180), button)
+        else:
+            pygame.draw.rect(gameDisplay, (110,110,110), button)
+            
+            
+
+    ######### DISPLAY #########
+
+        # Set the background colour
+        gameDisplay.fill(BROWN)
+
+        # Layout the board with squares
+        draw_squares()
+
+        # Highilight current position for peice to move
+        pygame.draw.rect(gameDisplay, GREEN, [Xcol*CELLSIZE, Yrow*CELLSIZE, CELLSIZE, CELLSIZE], 3)
+
+        pygame.draw.rect(gameDisplay, PAUSE, button)
+        
+        # Labels Player 1 / 2 and the scoreboard
+        gameDisplay.blit(Scoreboard, (610,25))
+        gameDisplay.blit(p1, (610, 80))
+        gameDisplay.blit(BstoneImg, (765, 85)) # Blits the black stone image for the usr to see what colour they are
+        gameDisplay.blit(p2, (610, 140))
+        gameDisplay.blit(WstoneImg, (765, 145)) # Blits the white stone image for teh user to see what colour they are
+        gameDisplay.blit(pause, (676, 415)) # Pause button
+
+        #count_vert(Xcol,Yrow,stone_count)
+        # Place the peices on the board in the respective squares
+        for y_index in range(len(board)):
+            for x_index in range(len(board)):
+                if board[x_index][y_index] == 'b':
+                    gameDisplay.blit(BstoneImg, (x_index*CELLSIZE,y_index*CELLSIZE))
+                        #text_score = comic_font50.render(str(score), True, GREEN)
+                        #gameDisplay.blit(text_score, (750, 90))
+                    if check_winner_b(board):
+                        gameDisplay.fill(BROWN)
+                elif board[y_index][x_index] == 'w':
+                    gameDisplay.blit(WstoneImg, (y_index*CELLSIZE,x_index*CELLSIZE))
+                        #gameDisplay.blit(white_score, (750, 90))
+                    if check_winner_w(board):
+                        gameDisplay.fill(BROWN)
+
+        pygame.display.flip()
+        clock.tick(5)    
+
+     
+
