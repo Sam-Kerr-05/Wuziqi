@@ -38,6 +38,8 @@ D / ➡️ --> <sup>RIGHT</sup>
 
 ## Information:
 -  this program was originally intended for educational use meaning there will be some mistakes and some elements remain incomplete.
+-  the image used at the top of this file was compiled using 'Canva' business graphics created by other people
+
 
 
   
